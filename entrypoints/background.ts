@@ -55,8 +55,18 @@ export default defineBackground(() => {
         // Send to the first active YouTube tab
         const targetTab = tabs.find((t) => t.active) || tabs[0];
         if (targetTab.id) {
-          await browser.tabs.sendMessage(targetTab.id, message);
-          console.log(`Forwarded action ${action} to tab ${targetTab.id}`);
+          try {
+            await browser.tabs.sendMessage(targetTab.id, message);
+            console.log(`Forwarded action ${action} to tab ${targetTab.id}`);
+          } catch (err: any) {
+            if (err.message?.includes("Receiving end does not exist")) {
+              console.warn(
+                `Content script not found in tab ${targetTab.id}. This usually happens if the extension was reloaded. Please refresh the YouTube tab!`
+              );
+            } else {
+              throw err;
+            }
+          }
         }
       } else {
         // No YouTube tab found
