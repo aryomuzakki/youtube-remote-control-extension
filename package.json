@@ -1,6 +1,6 @@
 {
-  "name": "chrome-yt-remote-control",
-  "description": "Extension for Chrome Youtube Remote Control",
+  "name": "youtube-remote-control-extension",
+  "description": "Youtube Remote Control is the code repository for the extension to control youtube from a remote client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
