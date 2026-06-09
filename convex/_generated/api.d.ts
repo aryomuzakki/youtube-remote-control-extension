@@ -8,13 +8,17 @@
  * @module
  */
 
+import type * as commands from "../commands.js";
+
 import type {
   ApiFromModules,
   FilterApi,
   FunctionReference,
 } from "convex/server";
 
-declare const fullApi: ApiFromModules<{}>;
+declare const fullApi: ApiFromModules<{
+  commands: typeof commands;
+}>;
 
 /**
  * A utility for referencing Convex functions in your app's public API.
