@@ -1,3 +1,5 @@
+> v0.0.0
+
 # WXT Chrome Extension (YouTube Headless Remote Receiver)
 
 **CURRENT REPOSITORY ROLE:** This is the **WXT Browser Extension Repo**. It functions as a headless client running inside the browser that listens to real-time events and manipulates YouTube tabs.

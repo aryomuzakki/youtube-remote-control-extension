@@ -1,6 +1,6 @@
-> todo: update readme to this
+> todo: update readme and project to this for v0.1.0
 
-> **CURRENT REPOSITORY ROLE:** [ UPDATE THIS LINE -> e.g., This is the `ytrc-extension` Repo | This is the `ytrc-web` Repo | This is the `ytrc-server` Repo ]
+> **REPOSITORY CONTEXT:** This is a universal, mirrored README shared across all repositories in this architecture. To understand the exact role of the codebase you are currently viewing, look at the `"name"` field in this repository's `package.json` file, then match it to the corresponding section under **Repository Specific Rules & Constraints** below.
 
 ---
 
@@ -12,6 +12,21 @@ We split the data flow into two distinct pipelines:
 
 1. **State & Storage (Supabase):** The persistent ledger that handles room creation, host availability, and security.
 2. **Real-Time Events (Convex):** The lightning-fast, ephemeral pipe used strictly to shoot execution commands to the extension.
+
+## 📑 Table of Contents
+
+- [The Hybrid Architecture & Data Flow](#️the-hybrid-architecture--data-flow)
+  - [Phase A: The Handshake (State Flow)](#phase-a-the-handshake-state-flow)
+  - [Phase B: The Remote Control (Command Flow)](#phase-b-the-remote-control-command-flow)
+- [Shared Contract: Database Schemas](#️shared-contract-database-schemas)
+  - [1. Supabase (The State Ledger)](#1-supabase-the-state-ledger)
+  - [2. Convex (The Command Pipe)](#2-convex-the-command-pipe)
+- [Repository Specific Rules & Constraints](#repository-specific-rules--constraints)
+  - [1. ytrc-extension (WXT Chrome Extension)](#1-ytrc-extension-wxt-chrome-extension)
+  - [2. ytrc-web (External Frontend UI)](#2-ytrc-web-external-frontend-ui)
+  - [3. ytrc-server (External Bridge Server)](#3-ytrc-server-external-bridge-server)
+
+---
 
 ## The Hybrid Architecture & Data Flow
 
