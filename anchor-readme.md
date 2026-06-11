@@ -10,7 +10,7 @@ This project is a multi-repository system designed to seamlessly control YouTube
 
 We split the data flow into two distinct pipelines:
 
-1. **State & Storage (Supabase):** The persistent ledger that handles room creation, host availability, and security.
+1. **State & Storage (Server + D1):** The persistent ledger that handles room creation, host availability, caller fingerprinting, and security — managed by `ytrc-server` using Cloudflare D1.
 2. **Real-Time Events (Convex):** The lightning-fast, ephemeral pipe used strictly to shoot execution commands to the extension.
 
 ## 📑 Table of Contents
@@ -19,7 +19,7 @@ We split the data flow into two distinct pipelines:
   - [Phase A: The Handshake (State Flow)](#phase-a-the-handshake-state-flow)
   - [Phase B: The Remote Control (Command Flow)](#phase-b-the-remote-control-command-flow)
 - [Shared Contract: Database Schemas](#️shared-contract-database-schemas)
-  - [1. Supabase (The State Ledger)](#1-supabase-the-state-ledger)
+  - [1. Cloudflare D1 (The State Ledger)](#1-cloudflare-d1-the-state-ledger)
   - [2. Convex (The Command Pipe)](#2-convex-the-command-pipe)
 - [Repository Specific Rules & Constraints](#repository-specific-rules--constraints)
   - [1. ytrc-extension (WXT Chrome Extension)](#1-ytrc-extension-wxt-chrome-extension)
@@ -32,10 +32,10 @@ We split the data flow into two distinct pipelines:
 
 ```mermaid
 graph TD
-    %% The State Flow (Supabase)
+    %% The State Flow (Server + D1)
     Ext[ytrc-extension] -- 1. Request Room --> Srv[ytrc-server]
-    Srv -- 2. Create Room State --> Supa[(Supabase: rooms)]
-    Web[ytrc-web] -- 3. Validate Room & Status --> Supa
+    Srv -- 2. Create Room State --> D1[(Cloudflare D1: rooms)]
+    Web[ytrc-web] -- 3. Validate Room & Status --> Srv
 
     %% The Command Flow (Convex)
     Web -- 4. Send Command Mutation --> Conv[(Convex: commands)]
@@ -45,18 +45,18 @@ graph TD
     style Ext fill:#0052cc,stroke:#333,stroke-width:2px,color:#fff
     style Web fill:#000000,stroke:#333,stroke-width:2px,color:#fff
     style Srv fill:#2b9048,stroke:#333,stroke-width:2px,color:#fff
-    style Supa fill:#3ecf8e,stroke:#333,stroke-width:2px,color:#111
+    style D1 fill:#f38020,stroke:#333,stroke-width:2px,color:#fff
     style Conv fill:#ff5a5f,stroke:#333,stroke-width:2px,color:#fff
     style YT fill:#ff0000,stroke:#333,stroke-width:2px,color:#fff
 ```
 
-![](https://mermaid.ink/img/pako:eNqdlEuPmzAQx7-K5WirRiKIZx4-9EK2UqVGrTZRV9mQg4FhQQs4NSaPjfLda5sEsT218cmemf9vPOPHGccsAUzwK6e7DK3mIQ8rJMfDA1plgJaCCkBfC3ZAn5fNjka0huEt5vEoNifB4xEcBVR1zqotGo2QbaIn-N1ALdATY6U0fUFLvm9Da-B74NsbQtqVxDFRwEGl0oo2q9bJnJsuM0FcuuthJ3-GqMUeINK5XRP9okWedKhPGtbUHU1J_yoyYGVJq-RaZsCqPRyHvRQK7JloCTLmFrtoJFZWrLlKsrkKCYrbkN42lUdBfBN9z_eqq7LYEj3uoRIaIDvZa6oKHZvo288AzX8slFpwVujA9WqzZs2qiUC5tv1ianEqQMvTvCjIwLJ8J46NWmrfgAxc173OR4c8ERlxdkcjZgXjZJCm6UeKKvpGUeM-ijrcluJEM8ub3kmRh3bFuBCnU_gnjG3bHzH6DFpMmvrUT-_bzXrVQf6nMdiQLyxPMBG8AQOXwEuqlvis4CEWGZQQYiKnCeVvIQ6ri9TsaPUib_FNxlnzmmGS0qKWq2anrvk8p_Ltlp2Vy1sKPGBNJTCZzjQDkzM-YjKzzLHrzGzbdb2J50wcA5-k1TdVJa7ne55jj8eTi4HfdVLLnE58qzdsA0OSC8YX7aeh_47LHyhJWyE?type=png)
+![](https://mermaid.ink/img/pako:eNqdlNuO2jAQhl9lZLTVooYoRw6-6E2ylSoVdbWgrijhIiSTJdokpo7DoYh3r-0QxPau-Moe__83Hp9OJGEpEkreeLzdwDyMeFSBbA8PMN8gzEQsEL4WbA-PM-Q75PAZQrvfyZ4OYnkUPBngQWBV56xawWAAtgkv-LvBWsALY6UMfYEZ37XSWnNWHULGlcUxIeCosmlHm1j5Qnv5GBSsSbMi5iiHFLhU1P0r4RXXLXmPa53eNeFnXOTplfZJ85q6W4hy_lNpwMoyrtJLrQGrdnjo32RQXM-EGUpNp502kipr1lhlWV6MFJJWcrNKNaMgvgnf853aWlluCU87rIQGyL282VYlHZrw7TmA8MdUuQVnhRYu5ssFa-bNGtXU6raYWhwL1PYsLwrasyzfSRKjlt53pD3XdS_9wT5PxYY624ORsIJx2suy7CNFFd1RVLuPoo63pTjrieWN76OE9gWSuWPLuXMp-gQumMyP_ew-zGJ-hfzPthBDPrI8JVTwBg1SIi9jNSQnBY-I2GCJEaGym8b8PSJRdZaebVz9kle4s3HWvG0IzeKilqNmq-54mMfy-ZbXKJd3FHnAmkoQ6kxsDSH0RA6ETixz6MqY7breyHNGjkGOMuqbqhTX8z3PsYfD0dkgf3RWyxyPfOumSRqmuWB82n4c-v84_wWYH1ov?type=png)
 
 ### Phase A: The Handshake (State Flow)
 
 - The **WXT Extension** boots and pings the **Server**: _"Generate a Room for me."_
-- The **Server** creates a row in **Supabase** and returns the `roomId`.
-- The **Web Client** connects via URL (e.g., `?room=123`) and queries **Supabase** to validate the room exists and the extension is currently enabled.
+- The **Server** captures the caller fingerprint (IP, User-Agent, CF headers), creates a room row in **Cloudflare D1**, and returns the `roomId`.
+- The **Web Client** connects via URL (e.g., `?room=123`) and calls `GET /api/rooms/:roomId` on the **Server** to validate the room exists and the extension is currently enabled.
 
 ### Phase B: The Remote Control (Command Flow)
 
@@ -70,20 +70,45 @@ graph TD
 
 To maintain absolute strict synchronization across all repositories, the following data schemas must be respected.
 
-### 1. Supabase (The State Ledger)
+### 1. Cloudflare D1 (The State Ledger)
 
-Table: `rooms`
+Managed exclusively by `ytrc-server`. Other repositories must read room state through the **server API**, not directly from D1.
 
-- `roomId` (String, Primary Key): e.g., "A7F9-2B"
+Table: `Room`
+
+- `roomId` (String, Primary Key): e.g., `"A7F9-2B"` — 7-character human-readable format
 - `status` (Enum): `"WAITING" | "REQUESTING_ACCESS" | "CONNECTED"`
-- `extensionEnabled` (Boolean): Updates to false if the user disables the extension locally.
-- `nowPlaying` (JSONB / Object): Holds current YouTube title/URL metadata.
+- `extensionEnabled` (Boolean): Updates to `false` if the user disables the extension locally.
+- `nowPlaying` (String / JSON-serialized): Holds current YouTube title/URL metadata.
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
+
+Table: `RoomFingerprint` (linked to `Room`)
+
+- `id` (String, Primary Key, cuid)
+- `roomId` (String, FK → Room.roomId)
+- `ip` (String, Optional): Caller IP from `CF-Connecting-IP` header.
+- `userAgent` (String, Optional): Caller `User-Agent` header.
+- `cfCountry` (String, Optional): Cloudflare `CF-IPCountry` header.
+- `cfRay` (String, Optional): Cloudflare `CF-Ray` header.
+- `createdAt` (DateTime)
+
+### Server API Contract
+
+All consumers must use the following endpoints:
+
+| Method | Path                 | Description                             |
+| ------ | -------------------- | --------------------------------------- |
+| `POST` | `/api/rooms`         | Create a new room (called by extension) |
+| `GET`  | `/api/rooms/:roomId` | Get room state (called by web client)   |
+| `GET`  | `/api/health/api`    | API health check                        |
+| `GET`  | `/api/health/db`     | D1 connection health check              |
 
 ### 2. Convex (The Command Pipe)
 
 Table: `commands`
 
-- `roomId` (String, Indexed): Must match the Supabase `roomId`.
+- `roomId` (String, Indexed): Must match a valid `Room.roomId` in D1.
 - `action` (String): Allowed literals: `"PLAY"`, `"PAUSE"`, `"NEXT"`, `"PREV"`, `"OPEN_LINK"`.
 - `url` (String, Optional): The targeted YouTube destination when action is `"OPEN_LINK"`.
 - `target` (String, Optional): `"NEW_TAB" | "CURRENT_TAB"`.
@@ -113,14 +138,24 @@ _When working in a specific codebase, the AI and developer must adhere to the ru
 **Role:** The remote control interface (smartphone UI).
 
 - **Framework:** Next.js or Vite React.
-- **Read from Supabase, Write to Convex:** Use the Supabase client to fetch room state and metadata (`nowPlaying`). Use standard `@convex/react` wrappers and `useMutation` to push interaction commands.
+- **Read from Server, Write to Convex:** Use the `ytrc-server` REST API (`GET /api/rooms/:roomId`) to fetch room state and metadata (`nowPlaying`). Use standard `@convex/react` wrappers and `useMutation` to push interaction commands.
 - **Payload Strictness:** Every mutation fired through `api.commands.send` must conform exactly to the Convex schema outlined above.
-- **UI Locking:** If the Supabase query returns `extensionEnabled: false` or `status: "WAITING"`, the web UI must lock/gray out the control buttons to prevent wasteful mutations.
+- **UI Locking:** If the server returns `extensionEnabled: false` or `status: "WAITING"`, the web UI must lock/gray out the control buttons to prevent wasteful mutations.
+- **Do not read from D1 directly** — all room state goes through the server API.
 
 ## 3. `ytrc-server` (External Bridge Server)
 
-**Role:** The lightweight state manager.
+**Role:** The lightweight state manager and security boundary.
 
-- **Framework:** Node.js/Hono or Go.
-- **Primary Function:** Receives the initialization ping from the extension, generates secure/unique `roomId`s, and performs the database insertion into Supabase securely (keeping Supabase service roles/secrets out of the bundled extension code).
-- **Stateless:** This server does _not_ manage long-lived WebSockets. It strictly handles standard HTTP/REST requests to bridge the extension to the persistent database.
+- **Framework:** Hono on **Cloudflare Workers** (deployed via Wrangler).
+- **Database:** **Cloudflare D1** (SQLite), accessed via **Prisma** with `@prisma/adapter-d1`. Schema managed via `wrangler d1 migrations`.
+- **Primary Function:** Receives the initialization ping from the extension, generates secure/unique `roomId`s (format: `XXXX-XX`, uppercase alphanumeric), captures caller fingerprint metadata, and writes to D1. Acts as the sole read gateway for room state (no direct D1 access from other services).
+- **Caller Fingerprinting:** Every room creation request must capture and store in `RoomFingerprint`:
+  - `CF-Connecting-IP` header (real caller IP via Cloudflare)
+  - `User-Agent` header
+  - `CF-IPCountry` header
+  - `CF-Ray` header
+  - This is for traceability, not for blocking. The endpoint remains open.
+- **Stateless:** This server does _not_ manage long-lived WebSockets. It strictly handles standard HTTP/REST requests.
+- **No Better-Auth / No user sessions:** Authentication is not required. The server is a stateless bridge.
+- **No pino:** Cloudflare Workers do not support Node.js streams. Use `console.log` / `console.error` only.
